@@ -1,0 +1,50 @@
+import os
+
+# Set the working directory
+os.chdir("/home/tigs/noncod/nmgd_run/out/reg")
+
+import pandas as pd
+from functools import reduce
+
+
+# Load all files
+df_base = pd.read_csv("utr2.tsv", sep="\t")
+df_gtex = pd.read_csv("utr_gtex_separated.tsv", sep="\t")
+df_favor = pd.read_csv("utr_favor_separated.tsv", sep="\t")
+df_prom = pd.read_csv("prom_utr.tsv", sep="\t")
+df_remm = pd.read_csv("remm_utr.tsv", sep="\t")
+df_splice = pd.read_csv("utr_spliceds.tsv", sep="\t")
+df_pang = pd.read_csv("utr_pangds.tsv", sep="\t")
+
+# Standardize column names
+df_prom.rename(columns={"chrom": "CHROM", "pos": "POS", "ref": "REF", "alt": "ALT"}, inplace=True)
+df_remm.rename(columns={"chrom": "CHROM", "pos": "POS", "REF": "REF", "ALT": "ALT"}, inplace=True)
+#df_splice.rename(columns={"CHROM": "chrom", "POS": "pos", "REF": "ref", "ALT": "alt"}, inplace=True)
+#df_pang.rename(columns={"CHROM": "chrom", "POS": "pos", "REF": "ref", "ALT": "alt"}, inplace=True)
+df_gtex.rename(columns={"chrom": "CHROM", "pos": "POS", "ref": "REF", "alt": "ALT"}, inplace=True)
+df_favor.rename(columns={"chrom": "CHROM", "pos": "POS", "ref": "REF", "alt": "ALT"}, inplace=True)
+
+# List of dataframes to merge
+dfs = [
+    df_base,
+    df_favor,
+    df_prom[["CHROM", "POS", "REF", "ALT", "promoterAI"]],
+    df_remm[["CHROM", "POS", "REF", "ALT", "prob"]],
+    df_splice[["CHROM", "POS", "REF", "ALT", "MAX_DS"]],
+    df_pang[["CHROM", "POS", "REF", "ALT", "MIN_SCORE"]],
+    df_gtex[["CHROM", "POS", "REF", "ALT", "nes", "pValue", "geneSymbol", "tissueSiteDetailId"]],
+]
+
+# Merge all dataframes on chrom, pos, ref, alt using outer join
+merged_df = reduce(lambda left, right: pd.merge(left, right, on=["CHROM", "POS", "REF", "ALT",], how="outer"), dfs)
+
+# Fill missing values with NA
+merged_df = merged_df.astype("object")
+merged_df.fillna("NA", inplace=True)
+
+
+# Save to file
+merged_df.to_csv("merged_utr_annotations.tsv", sep="\t", index=False)
+
+print("✅ Merged file saved as 'merged_utr_annotations.tsv'")
+
